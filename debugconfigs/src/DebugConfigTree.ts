@@ -250,6 +250,87 @@ export class DebugConfigTreeDataProvider implements vscode.TreeDataProvider<Debu
     }
 
     /**
+     * Add a new root item to the tree
+     * @param label The label for the new root item
+     */
+    addRootItem(label: string): void {
+        const newItem = new DebugConfigTreeItem(
+            label,
+            vscode.TreeItemCollapsibleState.None
+        );
+        this.rootItems.push(newItem);
+        this.refresh();
+        this.saveTreeState();
+    }
+
+    /**
+     * Add a child to a specific item in the tree
+     * @param parent The parent item to add the child to
+     * @param childLabel The label for the new child item
+     * @param childValue Optional value for the new child item (creates leaf node if provided)
+     */
+    addChildToItem(parent: DebugConfigTreeItem, childLabel: string, childValue?: string): void {
+        const newChild = new DebugConfigTreeItem(
+            childLabel,
+            vscode.TreeItemCollapsibleState.None,
+            childValue
+        );
+        parent.addChild(newChild);
+        this.refresh();
+        this.saveTreeState();
+    }
+
+    /**
+     * Remove an item from the tree (works for both root items and child items)
+     * @param item The item to remove
+     */
+    removeItem(item: DebugConfigTreeItem): void {
+        // First try to remove from root items
+        if (this.removeRootItem(item)) {
+            return;
+        }
+
+        // If not found in root, search through all items to find the parent
+        this.removeItemRecursively(this.rootItems, item);
+    }
+
+    /**
+     * Set the value of a specific item
+     * @param item The item to set the value for
+     * @param value The value to set
+     */
+    setItemValue(item: DebugConfigTreeItem, value: string): void {
+        item.setValue(value);
+        this.refresh();
+        this.saveTreeState();
+    }
+
+    /**
+     * Recursively search for and remove an item from the tree
+     * @param items The array of items to search through
+     * @param itemToRemove The item to remove
+     * @returns true if the item was found and removed, false otherwise
+     */
+    private removeItemRecursively(items: DebugConfigTreeItem[], itemToRemove: DebugConfigTreeItem): boolean {
+        for (const item of items) {
+            if (item.children) {
+                // Check if the item to remove is a direct child
+                if (item.removeChild(itemToRemove)) {
+                    this.refresh();
+                    this.saveTreeState();
+                    return true;
+                }
+
+                // Recursively search in children
+                if (this.removeItemRecursively(item.children, itemToRemove)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * Save the current tree state to workspace state as JSON
      */
     async saveTreeState(): Promise<void> {
@@ -341,6 +422,52 @@ export class DebugConfigTreeDataProvider implements vscode.TreeDataProvider<Debu
 
         } catch (error) {
             console.error('Failed to export tree state to file:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Import tree state from a JSON file and replace the current tree
+     * @param filePath The absolute path to the JSON file to import
+     */
+    async importTreeStateFromFile(filePath: string): Promise<void> {
+        try {
+            // Check if file exists
+            if (!fs.existsSync(filePath)) {
+                throw new Error(`File not found: ${filePath}`);
+            }
+
+            // Read and parse the JSON file
+            const jsonString = fs.readFileSync(filePath, 'utf8');
+            const importData = JSON.parse(jsonString);
+
+            // Validate the import data structure
+            if (!importData || typeof importData !== 'object') {
+                throw new Error('Invalid JSON format: Expected an object');
+            }
+
+            // Handle both new format (with metadata) and legacy format (direct tree state)
+            let treeStateJson: any[];
+            if (importData.treeState && Array.isArray(importData.treeState)) {
+                // New format with metadata
+                treeStateJson = importData.treeState;
+            } else if (Array.isArray(importData)) {
+                // Legacy format - direct tree state array
+                treeStateJson = importData;
+            } else {
+                throw new Error('Invalid JSON format: Expected tree state data');
+            }
+
+            // Deserialize the tree items
+            const newRootItems = this.deserializeTreeItems(treeStateJson);
+
+            // Replace the current tree with the imported data
+            this.rootItems = newRootItems;
+            this.refresh();
+            this.saveTreeState();
+
+        } catch (error) {
+            console.error('Failed to import tree state from file:', error);
             throw error;
         }
     }

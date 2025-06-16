@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { DebugConfigTreeDataProvider } from './DebugConfigTree';
+import { DebugConfigTreeDataProvider, DebugConfigTreeItem } from './DebugConfigTree';
 
 export function activate(context: vscode.ExtensionContext) {
 	// Create and register the tree data provider with workspace state
@@ -22,7 +22,192 @@ export function activate(context: vscode.ExtensionContext) {
 		treeDataProvider.refresh();
 	});
 
-	context.subscriptions.push(refreshCommand);
+	// Register add root item command
+	const addRootItemCommand = vscode.commands.registerCommand('debugConfigs.addRootItem', async () => {
+		const label = await vscode.window.showInputBox({
+			prompt: 'Enter label for the new root item',
+			placeHolder: 'Item label'
+		});
+
+		if (label) {
+			treeDataProvider.addRootItem(label);
+		}
+	});
+
+	// Register clear tree command
+	const clearTreeCommand = vscode.commands.registerCommand('debugConfigs.clearTree', async () => {
+		const result = await vscode.window.showWarningMessage(
+			'Are you sure you want to clear the entire tree?',
+			{ modal: true },
+			'Yes', 'No'
+		);
+
+		if (result === 'Yes') {
+			treeDataProvider.clear();
+		}
+	});
+
+	// Register add child command
+	const addChildCommand = vscode.commands.registerCommand('debugConfigs.addChild', async (item: DebugConfigTreeItem) => {
+		const label = await vscode.window.showInputBox({
+			prompt: 'Enter label for the new child item',
+			placeHolder: 'Child label'
+		});
+
+		if (!label) {
+			return;
+		}
+
+		// Ask user if they want to create a leaf node (with value) or parent node (no value)
+		const nodeType = await vscode.window.showQuickPick(
+			[
+				{ label: 'Leaf Node (with value)', value: 'leaf' },
+				{ label: 'Parent Node (can have children)', value: 'parent' }
+			],
+			{
+				placeHolder: 'What type of node do you want to create?'
+			}
+		);
+
+		if (!nodeType) {
+			return;
+		}
+
+		if (nodeType.value === 'leaf') {
+			const value = await vscode.window.showInputBox({
+				prompt: `Enter value for "${label}"`,
+				placeHolder: 'Value'
+			});
+
+			if (value !== undefined) {
+				treeDataProvider.addChildToItem(item, label, value);
+			}
+		} else {
+			treeDataProvider.addChildToItem(item, label);
+		}
+	});
+
+	// Register remove item command
+	const removeItemCommand = vscode.commands.registerCommand('debugConfigs.removeItem', async (item: DebugConfigTreeItem) => {
+		const result = await vscode.window.showWarningMessage(
+			`Are you sure you want to remove "${item.label}"?`,
+			{ modal: true },
+			'Yes', 'No'
+		);
+
+		if (result === 'Yes') {
+			treeDataProvider.removeItem(item);
+		}
+	});
+
+	// Register set value command
+	const setValueCommand = vscode.commands.registerCommand('debugConfigs.setValue', async (item: DebugConfigTreeItem) => {
+		// Check if this is a parent node with children
+		if (item.children && item.children.length > 0) {
+			vscode.window.showErrorMessage(`Cannot set value for "${item.label}" because it has children. Remove all children first.`);
+			return;
+		}
+
+		const currentValue = item.value || '';
+		const value = await vscode.window.showInputBox({
+			prompt: `Enter value for "${item.label}"`,
+			placeHolder: 'Value',
+			value: currentValue
+		});
+
+		if (value !== undefined) {
+			treeDataProvider.setItemValue(item, value);
+		}
+	});
+
+	// Register export tree command
+	const exportTreeCommand = vscode.commands.registerCommand('debugConfigs.exportTree', async () => {
+		// Show save dialog to let user choose where to save the JSON file
+		const saveUri = await vscode.window.showSaveDialog({
+			defaultUri: vscode.Uri.file('debug-config-tree.json'),
+			filters: {
+				'JSON Files': ['json'],
+				'All Files': ['*']
+			},
+			title: 'Export Tree as JSON'
+		});
+
+		if (!saveUri) {
+			return; // User cancelled the dialog
+		}
+
+		try {
+			// Export the tree using the existing method
+			await treeDataProvider.exportTreeStateToFile(saveUri.fsPath);
+
+			// Show success message with option to open the file
+			const result = await vscode.window.showInformationMessage(
+				`Tree exported successfully to ${saveUri.fsPath}`,
+				'Open File'
+			);
+
+			if (result === 'Open File') {
+				// Open the exported file in the editor
+				const document = await vscode.workspace.openTextDocument(saveUri);
+				await vscode.window.showTextDocument(document);
+			}
+		} catch (error) {
+			vscode.window.showErrorMessage(`Failed to export tree: ${error}`);
+		}
+	});
+
+	// Register import tree command
+	const importTreeCommand = vscode.commands.registerCommand('debugConfigs.importTree', async () => {
+		// Warn user that existing tree will be cleared
+		const confirmResult = await vscode.window.showWarningMessage(
+			'Importing will replace the current tree. All existing data will be lost.',
+			{ modal: true },
+			'Continue', 'Cancel'
+		);
+
+		if (confirmResult !== 'Continue') {
+			return; // User cancelled
+		}
+
+		// Show open dialog to let user choose the JSON file to import
+		const openUri = await vscode.window.showOpenDialog({
+			canSelectFiles: true,
+			canSelectFolders: false,
+			canSelectMany: false,
+			filters: {
+				'JSON Files': ['json'],
+				'All Files': ['*']
+			},
+			title: 'Import Tree from JSON'
+		});
+
+		if (!openUri || openUri.length === 0) {
+			return; // User cancelled the dialog
+		}
+
+		try {
+			// Import the tree using the new method
+			await treeDataProvider.importTreeStateFromFile(openUri[0].fsPath);
+
+			// Show success message
+			vscode.window.showInformationMessage(
+				`Tree imported successfully from ${openUri[0].fsPath}`
+			);
+		} catch (error) {
+			vscode.window.showErrorMessage(`Failed to import tree: ${error}`);
+		}
+	});
+
+	context.subscriptions.push(
+		refreshCommand,
+		addRootItemCommand,
+		clearTreeCommand,
+		addChildCommand,
+		removeItemCommand,
+		setValueCommand,
+		exportTreeCommand,
+		importTreeCommand
+	);
 }
 
 export function deactivate() { }

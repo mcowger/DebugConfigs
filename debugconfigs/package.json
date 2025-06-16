@@ -26,6 +26,38 @@
         "command": "debugConfigs.refresh",
         "title": "Refresh",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "debugConfigs.addRootItem",
+        "title": "Add Root Item",
+        "icon": "$(add)"
+      },
+      {
+        "command": "debugConfigs.clearTree",
+        "title": "Clear Tree",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "debugConfigs.addChild",
+        "title": "Add Child"
+      },
+      {
+        "command": "debugConfigs.removeItem",
+        "title": "Remove Item"
+      },
+      {
+        "command": "debugConfigs.setValue",
+        "title": "Set Value"
+      },
+      {
+        "command": "debugConfigs.exportTree",
+        "title": "Export Tree as JSON",
+        "icon": "$(save)"
+      },
+      {
+        "command": "debugConfigs.importTree",
+        "title": "Import Tree from JSON",
+        "icon": "$(folder-opened)"
       }
     ],
     "menus": {
@@ -34,6 +66,43 @@
           "command": "debugConfigs.refresh",
           "when": "view == debugConfigs",
           "group": "navigation"
+        },
+        {
+          "command": "debugConfigs.addRootItem",
+          "when": "view == debugConfigs",
+          "group": "navigation"
+        },
+        {
+          "command": "debugConfigs.clearTree",
+          "when": "view == debugConfigs",
+          "group": "navigation"
+        },
+        {
+          "command": "debugConfigs.exportTree",
+          "when": "view == debugConfigs",
+          "group": "navigation"
+        },
+        {
+          "command": "debugConfigs.importTree",
+          "when": "view == debugConfigs",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "debugConfigs.addChild",
+          "when": "view == debugConfigs && viewItem == parent",
+          "group": "1_add"
+        },
+        {
+          "command": "debugConfigs.setValue",
+          "when": "view == debugConfigs && (viewItem == leaf || viewItem == parent)",
+          "group": "2_edit"
+        },
+        {
+          "command": "debugConfigs.removeItem",
+          "when": "view == debugConfigs",
+          "group": "3_remove"
         }
       ]
     }
