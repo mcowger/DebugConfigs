@@ -9,7 +9,7 @@ This is an initial but working version. No tests.
 ## Features
 
 - **Hierarchical Tree Structure**: Organize your debug configurations in a tree structure with folders and leaf nodes
-- **Variable Substitution**: Reference tree values in your `launch.json` and `tasks.json` files using dotted notation
+- **Variable Substitution**: Reference tree values in your `launch.json` and `tasks.json` files using dotted notation, including generation of sample configs.
 - **Persistent Storage**: Tree state is automatically saved and restored between VS Code sessions in the workspace storage.
 - **Import/Export**: Save and load tree configurations as JSON files
 
@@ -173,6 +173,60 @@ The generated output will be:
 
 This eliminates the need to manually write input commands and ensures consistency between your tree structure and launch configurations.
 
+## Add to Configuration Files
+
+The extension can automatically add input commands directly to your existing `launch.json` or `tasks.json` files.
+
+### Usage
+
+1. Build your tree structure with folders and leaf nodes containing values
+2. Run the command `debugConfigs.addToLaunchConfig` from the Command Palette
+3. Select the configuration file you want to modify (launch.json or tasks.json)
+4. The extension will automatically add the input commands to the `inputs` array
+5. Save the file when you're ready to commit the changes
+
+### Features
+
+- **Multiple File Types**: Supports both `launch.json` and `tasks.json` files
+- **Automatic Discovery**: Finds all configuration files in your workspace
+- **Duplicate Prevention**: Only adds commands that don't already exist (based on ID)
+- **Comment Preservation**: Uses Microsoft's `jsonc-parser` to preserve all existing comments and formatting
+- **Smart Integration**: Adds helpful usage comments above each new input command
+- **User Control**: Makes changes in the editor without auto-saving, letting you review first
+- **Undo Support**: Uses VS Code's workspace edit system for full undo support
+- **Multiple Files**: Lets you choose which file to modify if multiple exist
+
+### What Gets Added
+
+The command will add input entries with helpful comments to your configuration file:
+
+```jsonc
+{
+  // Your existing comments are preserved
+  "version": "0.2.0",
+  "configurations": [
+    // Existing configurations remain unchanged
+  ],
+  "inputs": [
+    // use this: ${input:environment.development.port}
+    {
+      "id": "environment.development.port",
+      "type": "command",
+      "command": "extension.debugconfigs.replace",
+      "args": {
+        "path": "environment.development.port"
+      }
+    }
+  ]
+}
+```
+
+**Key Benefits:**
+- **All existing comments are preserved** - Your documentation stays intact
+- **Usage comments added** - Each new input shows exactly how to reference it
+- **Smart placement** - New inputs are added to existing arrays or create new ones as needed
+- **No auto-save** - Changes are made in the editor for you to review before saving
+
 ### Label Restrictions
 
 - Labels cannot contain dots (.) as they are used for path navigation
@@ -191,9 +245,19 @@ This eliminates the need to manually write input commands and ensures consistenc
 - `debugConfigs.exportTree`: Export tree as JSON
 - `debugConfigs.importTree`: Import tree from JSON
 - `debugConfigs.generateCommands`: Generate input commands JSON from tree structure
+- `debugConfigs.addToLaunchConfig`: Add input commands directly to existing launch.json or tasks.json files
+
+## Technical Details
+
+This extension uses Microsoft's official `jsonc-parser` package (the same parser VS Code uses internally) to ensure:
+- **Perfect comment preservation** - No existing comments are lost during modifications
+- **Reliable parsing** - Handles all JSONC format variations correctly
+- **Precise edits** - Only modifies exactly what needs to change
+- **Consistent formatting** - Maintains your preferred code style
 
 ## Installation
 
+1. Install the extension from the VS Code marketplace
 2. The Debug Configs view will appear in the Debug panel
 3. Start building your configuration tree and using variable substitution
 

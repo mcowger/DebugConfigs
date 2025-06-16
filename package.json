@@ -65,8 +65,13 @@
       },
       {
         "command": "debugConfigs.generateCommands",
-        "title": "Generate Stanzas for Variable Substitution",
+        "title": "Generate Stanzas",
         "icon": "$(json)"
+      },
+      {
+        "command": "debugConfigs.addToLaunchConfig",
+        "title": "Add to launch.json or tasks.json",
+        "icon": "$(extensions-configure-recommended)"
       }
     ],
     "menus": {
@@ -100,6 +105,11 @@
           "command": "debugConfigs.generateCommands",
           "when": "view == debugConfigs",
           "group": "navigation"
+        },
+        {
+          "command": "debugConfigs.addToLaunchConfig",
+          "when": "view == debugConfigs",
+          "group": "navigation"
         }
       ],
       "view/item/context": [
@@ -130,14 +140,17 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.101.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
+    "@types/vscode": "^1.101.0",
     "@typescript-eslint/eslint-plugin": "^8.31.1",
     "@typescript-eslint/parser": "^8.31.1",
-    "eslint": "^9.25.1",
-    "typescript": "^5.8.3",
     "@vscode/test-cli": "^0.0.10",
-    "@vscode/test-electron": "^2.5.2"
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.25.1",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "jsonc-parser": "^3.3.1"
   }
 }

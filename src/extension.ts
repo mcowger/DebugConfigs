@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { DebugConfigTreeDataProvider, DebugConfigTreeItem } from './DebugConfigTree';
+import * as jsonc from 'jsonc-parser';
 
 export function activate(context: vscode.ExtensionContext) {
 	// Create and register the tree data provider with workspace state
@@ -292,6 +293,123 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 
+	// Register add to launch config command
+	const addToLaunchConfigCommand = vscode.commands.registerCommand('debugConfigs.addToLaunchConfig', async () => {
+		try {
+			// Generate the commands JSON
+			const commands = treeDataProvider.generateCommandsJson();
+			console.log('commands', commands);
+			if (commands.length === 0) {
+				vscode.window.showInformationMessage('No leaf nodes found in the tree. Add some values to generate commands.');
+				return;
+			}
+
+			// Find launch.json and tasks.json files in the workspace
+			const launchFiles = await vscode.workspace.findFiles('**/.vscode/launch.json', '**/node_modules/**');
+			const taskFiles = await vscode.workspace.findFiles('**/.vscode/tasks.json', '**/node_modules/**');
+
+			const allFiles = [
+				...launchFiles.map(file => ({ uri: file, type: 'launch.json' })),
+				...taskFiles.map(file => ({ uri: file, type: 'tasks.json' }))
+			];
+
+			if (allFiles.length === 0) {
+				vscode.window.showErrorMessage('No launch.json or tasks.json files found in the workspace.');
+				return;
+			}
+
+			// Let user select which file to modify
+			let selectedFile: vscode.Uri;
+			if (allFiles.length === 1) {
+				selectedFile = allFiles[0].uri;
+			} else {
+				const fileItems = allFiles.map(file => ({
+					label: `${vscode.workspace.asRelativePath(file.uri)} (${file.type})`,
+					uri: file.uri
+				}));
+
+				const selected = await vscode.window.showQuickPick(fileItems, {
+					placeHolder: 'Select configuration file to modify'
+				});
+
+				if (!selected) {
+					return; // User cancelled
+				}
+				selectedFile = selected.uri;
+			}
+
+			// Read and parse the configuration file
+			const document = await vscode.workspace.openTextDocument(selectedFile);
+			const content = document.getText();
+
+			let config: any;
+			try {
+				// Parse JSONC while preserving structure
+				config = jsonc.parse(content);
+			} catch (parseError) {
+				vscode.window.showErrorMessage(`Failed to parse configuration file: ${parseError}`);
+				return;
+			}
+
+			// Get existing input IDs to avoid duplicates
+			const existingIds = new Set((config.inputs || []).map((input: any) => input.id));
+
+			// Filter out commands that already exist
+			const newCommands = commands.filter(command => !existingIds.has(command.id));
+
+			if (newCommands.length === 0) {
+				vscode.window.showInformationMessage('All input commands already exist in the configuration file.');
+				return;
+			}
+
+			// Use jsonc-parser to make edits while preserving comments
+			let updatedContent = content;
+			const edits: jsonc.Edit[] = [];
+
+			if (config.inputs) {
+				// Inputs array exists - add new commands to it
+				for (const command of newCommands) {
+					edits.push(...jsonc.modify(updatedContent, ['inputs', -1], command, {
+						formattingOptions: {
+							insertSpaces: true,
+							tabSize: 2
+						}
+					}));
+				}
+			} else {
+				// No inputs array - create one
+				edits.push(...jsonc.modify(updatedContent, ['inputs'], newCommands, {
+					formattingOptions: {
+						insertSpaces: true,
+						tabSize: 2
+					}
+				}));
+			}
+
+			// Apply all edits
+			updatedContent = jsonc.applyEdits(updatedContent, edits);
+
+			// Add comments for new inputs manually (jsonc-parser doesn't handle comments in modifications)
+			for (const command of newCommands) {
+				const commandRegex = new RegExp(`(\\s*)(\\{[^}]*"id"\\s*:\\s*"${command.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"[^}]*\\})`, 'g');
+				updatedContent = updatedContent.replace(commandRegex, `$1// use this: \${input:${command.id}}\n$1$2`);
+			}
+
+			const edit = new vscode.WorkspaceEdit();
+			edit.replace(selectedFile, new vscode.Range(0, 0, document.lineCount, 0), updatedContent);
+
+			await vscode.workspace.applyEdit(edit);
+
+			// Show success message
+			vscode.window.showInformationMessage(
+				`Added ${newCommands.length} input command(s). Remember to save.`
+			);
+
+		} catch (error) {
+			vscode.window.showErrorMessage(`Failed to add commands to configuration file: ${error}`);
+		}
+	});
+
 	context.subscriptions.push(
 		refreshCommand,
 		addRootItemCommand,
@@ -302,7 +420,8 @@ export function activate(context: vscode.ExtensionContext) {
 		replaceCommand,
 		exportTreeCommand,
 		importTreeCommand,
-		generateCommandsCommand
+		generateCommandsCommand,
+		addToLaunchConfigCommand
 	);
 }
 
