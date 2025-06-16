@@ -50,6 +50,10 @@
         "title": "Set Value"
       },
       {
+        "command": "extension.debugconfigs.replace",
+        "title": "Debug Config Variable Substitution"
+      },
+      {
         "command": "debugConfigs.exportTree",
         "title": "Export Tree as JSON",
         "icon": "$(save)"

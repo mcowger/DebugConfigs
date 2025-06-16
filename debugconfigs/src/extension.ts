@@ -26,7 +26,13 @@ export function activate(context: vscode.ExtensionContext) {
 	const addRootItemCommand = vscode.commands.registerCommand('debugConfigs.addRootItem', async () => {
 		const label = await vscode.window.showInputBox({
 			prompt: 'Enter label for the new root item',
-			placeHolder: 'Item label'
+			placeHolder: 'Item label',
+			validateInput: (value: string) => {
+				if (value.includes('.')) {
+					return 'Labels cannot contain dots (.) as they are used for path navigation';
+				}
+				return undefined;
+			}
 		});
 
 		if (label) {
@@ -51,7 +57,13 @@ export function activate(context: vscode.ExtensionContext) {
 	const addChildCommand = vscode.commands.registerCommand('debugConfigs.addChild', async (item: DebugConfigTreeItem) => {
 		const label = await vscode.window.showInputBox({
 			prompt: 'Enter label for the new child item',
-			placeHolder: 'Child label'
+			placeHolder: 'Child label',
+			validateInput: (value: string) => {
+				if (value.includes('.')) {
+					return 'Labels cannot contain dots (.) as they are used for path navigation';
+				}
+				return undefined;
+			}
 		});
 
 		if (!label) {
@@ -118,6 +130,49 @@ export function activate(context: vscode.ExtensionContext) {
 		if (value !== undefined) {
 			treeDataProvider.setItemValue(item, value);
 		}
+	});
+
+	// Register variable substitution command
+	const replaceCommand = vscode.commands.registerCommand('extension.debugconfigs.replace', (args: { path: string }) => {
+		if (!args || !args.path) {
+			throw new Error('Path argument is required for debugconfigs.replace command');
+		}
+
+		const pathParts = args.path.split('.');
+		let currentItems = treeDataProvider.getRootItems();
+		let currentItem: DebugConfigTreeItem | undefined;
+
+		// Navigate through the tree using the dotted path
+		for (const part of pathParts) {
+			currentItem = currentItems.find((item: DebugConfigTreeItem) => {
+				const itemLabel = typeof item.label === 'string' ? item.label : item.label?.label || '';
+				return itemLabel.toLowerCase() === part.toLowerCase();
+			});
+
+			if (!currentItem) {
+				throw new Error(`Path "${args.path}" not found: "${part}" does not exist`);
+			}
+
+			// If this is not the last part, we need to go deeper
+			if (part !== pathParts[pathParts.length - 1]) {
+				if (!currentItem.children || currentItem.children.length === 0) {
+					throw new Error(`Path "${args.path}" not found: "${part}" has no children`);
+				}
+				currentItems = currentItem.children;
+			}
+		}
+
+		// At this point, currentItem should be our target
+		if (!currentItem) {
+			throw new Error(`Path "${args.path}" not found`);
+		}
+
+		// Check if this is a leaf node (has a value)
+		if (currentItem.value === undefined) {
+			throw new Error(`Path "${args.path}" does not point to a leaf node with a value`);
+		}
+
+		return currentItem.value;
 	});
 
 	// Register export tree command
@@ -205,6 +260,7 @@ export function activate(context: vscode.ExtensionContext) {
 		addChildCommand,
 		removeItemCommand,
 		setValueCommand,
+		replaceCommand,
 		exportTreeCommand,
 		importTreeCommand
 	);

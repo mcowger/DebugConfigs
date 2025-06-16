@@ -254,6 +254,11 @@ export class DebugConfigTreeDataProvider implements vscode.TreeDataProvider<Debu
      * @param label The label for the new root item
      */
     addRootItem(label: string): void {
+        // Validate that label doesn't contain dots
+        if (label.includes('.')) {
+            throw new Error(`Invalid label "${label}": Labels cannot contain dots (.) as they are used for path navigation`);
+        }
+
         const newItem = new DebugConfigTreeItem(
             label,
             vscode.TreeItemCollapsibleState.None
@@ -270,6 +275,11 @@ export class DebugConfigTreeDataProvider implements vscode.TreeDataProvider<Debu
      * @param childValue Optional value for the new child item (creates leaf node if provided)
      */
     addChildToItem(parent: DebugConfigTreeItem, childLabel: string, childValue?: string): void {
+        // Validate that label doesn't contain dots
+        if (childLabel.includes('.')) {
+            throw new Error(`Invalid label "${childLabel}": Labels cannot contain dots (.) as they are used for path navigation`);
+        }
+
         const newChild = new DebugConfigTreeItem(
             childLabel,
             vscode.TreeItemCollapsibleState.None,
@@ -303,6 +313,14 @@ export class DebugConfigTreeDataProvider implements vscode.TreeDataProvider<Debu
         item.setValue(value);
         this.refresh();
         this.saveTreeState();
+    }
+
+    /**
+     * Get the root items of the tree
+     * @returns Array of root items
+     */
+    getRootItems(): DebugConfigTreeItem[] {
+        return this.rootItems;
     }
 
     /**
@@ -384,6 +402,11 @@ export class DebugConfigTreeDataProvider implements vscode.TreeDataProvider<Debu
      */
     private deserializeTreeItems(data: any[]): DebugConfigTreeItem[] {
         return data.map(itemData => {
+            // Validate that labels don't contain dots
+            if (itemData.label && typeof itemData.label === 'string' && itemData.label.includes('.')) {
+                throw new Error(`Invalid label "${itemData.label}": Labels cannot contain dots (.) as they are used for path navigation`);
+            }
+
             const children = itemData.children ? this.deserializeTreeItems(itemData.children) : undefined;
             return new DebugConfigTreeItem(
                 itemData.label,
