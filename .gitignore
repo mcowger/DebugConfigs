@@ -1,4 +1,4 @@
-debugconfigs/node_modules/**
+node_modules/**
 .DS_Store
-debugconfigs/.vscode*
+.vscode-*/**
 out/
