@@ -253,6 +253,45 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 
+	// Register generate commands JSON command
+	const generateCommandsCommand = vscode.commands.registerCommand('debugConfigs.generateCommands', async () => {
+		try {
+			// Generate the commands JSON
+			const commands = treeDataProvider.generateCommandsJson();
+
+			if (commands.length === 0) {
+				vscode.window.showInformationMessage('No leaf nodes found in the tree. Add some values to generate commands.');
+				return;
+			}
+
+			// Create JSONC content with comments
+			let jsonContent = '[\n';
+			for (let i = 0; i < commands.length; i++) {
+				const command = commands[i];
+				jsonContent += `  // use this: \${input:${command.id}}\n`;
+				jsonContent += `  ${JSON.stringify(command, null, 2).replace(/\n/g, '\n  ')}`;
+				if (i < commands.length - 1) {
+					jsonContent += ',';
+				}
+				jsonContent += '\n';
+			}
+			jsonContent += ']';
+
+			const document = await vscode.workspace.openTextDocument({
+				content: jsonContent,
+				language: 'jsonc'
+			});
+
+			// Show the document in the editor
+			await vscode.window.showTextDocument(document);
+
+			// Show success message
+			vscode.window.showInformationMessage(`Generated ${commands.length} command(s) from tree leaf nodes.`);
+		} catch (error) {
+			vscode.window.showErrorMessage(`Failed to generate commands: ${error}`);
+		}
+	});
+
 	context.subscriptions.push(
 		refreshCommand,
 		addRootItemCommand,
@@ -262,7 +301,8 @@ export function activate(context: vscode.ExtensionContext) {
 		setValueCommand,
 		replaceCommand,
 		exportTreeCommand,
-		importTreeCommand
+		importTreeCommand,
+		generateCommandsCommand
 	);
 }
 

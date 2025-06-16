@@ -324,6 +324,52 @@ export class DebugConfigTreeDataProvider implements vscode.TreeDataProvider<Debu
     }
 
     /**
+     * Generate JSON commands for all leaf nodes in the tree
+     * @returns Array of command objects for variable substitution
+     */
+    generateCommandsJson(): Array<{ id: string, type: string, command: string, args: { path: string } }> {
+        const commands: Array<{ id: string, type: string, command: string, args: { path: string } }> = [];
+
+        const traverseItems = (items: DebugConfigTreeItem[], pathPrefix: string = '') => {
+            for (const item of items) {
+                const currentPath = pathPrefix ? `${pathPrefix}.${item.label}` : item.label as string;
+
+                // If this is a leaf node (has a value), generate a command
+                if (item.value !== undefined) {
+                    // Generate a camelCase ID from the path
+                    const id = this.generateIdFromPath(currentPath);
+
+                    commands.push({
+                        id: id,
+                        type: "command",
+                        command: "extension.debugconfigs.replace",
+                        args: {
+                            path: currentPath.toLowerCase()
+                        }
+                    });
+                }
+
+                // If this item has children, traverse them recursively
+                if (item.children && item.children.length > 0) {
+                    traverseItems(item.children, currentPath);
+                }
+            }
+        };
+
+        traverseItems(this.rootItems);
+        return commands;
+    }
+
+    /**
+     * Generate a camelCase ID from a dotted path
+     * @param path The dotted path (e.g., "environment.development.port")
+     * @returns A camelCase ID (e.g., "envDevPort")
+     */
+    private generateIdFromPath(path: string): string {
+        return path.toLowerCase();
+    }
+
+    /**
      * Recursively search for and remove an item from the tree
      * @param items The array of items to search through
      * @param itemToRemove The item to remove

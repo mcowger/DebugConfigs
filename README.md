@@ -100,6 +100,79 @@ The command will throw descriptive errors if:
 - **Remove Item**: Delete folders or leaf nodes
 - **Clear Tree**: Remove all items from the tree
 
+## Generate Input Commands
+
+The extension provides a convenient way to automatically generate the input commands needed for your `launch.json` configurations.
+
+### Usage
+
+1. Build your tree structure with folders and leaf nodes containing values
+2. Run the command `debugConfigs.generateCommands` from the Command Palette
+3. The extension will generate a JSONC file with all the input commands for your leaf nodes
+
+### Generated Output
+
+For a tree structure like:
+```
+Environment
+├── Development
+│   ├── port: "3000"
+│   └── host: "localhost"
+└── Production
+    ├── port: "8080"
+    └── host: "prod.example.com"
+```
+
+The generated output will be:
+```jsonc
+[
+  // use this: ${input:environment.development.port}
+  {
+    "id": "environment.development.port",
+    "type": "command",
+    "command": "extension.debugconfigs.replace",
+    "args": {
+      "path": "environment.development.port"
+    }
+  },
+  // use this: ${input:environment.development.host}
+  {
+    "id": "environment.development.host",
+    "type": "command",
+    "command": "extension.debugconfigs.replace",
+    "args": {
+      "path": "environment.development.host"
+    }
+  },
+  // use this: ${input:environment.production.port}
+  {
+    "id": "environment.production.port",
+    "type": "command",
+    "command": "extension.debugconfigs.replace",
+    "args": {
+      "path": "environment.production.port"
+    }
+  },
+  // use this: ${input:environment.production.host}
+  {
+    "id": "environment.production.host",
+    "type": "command",
+    "command": "extension.debugconfigs.replace",
+    "args": {
+      "path": "environment.production.host"
+    }
+  }
+]
+```
+
+### How to Use Generated Commands
+
+1. Copy the generated input commands from the output file
+2. Paste them into the `inputs` array of your `launch.json` file
+3. Reference them in your configurations using the syntax shown in the comments (e.g., `${input:environment.development.port}`)
+
+This eliminates the need to manually write input commands and ensures consistency between your tree structure and launch configurations.
+
 ### Label Restrictions
 
 - Labels cannot contain dots (.) as they are used for path navigation
@@ -117,6 +190,7 @@ The command will throw descriptive errors if:
 - `extension.debugconfigs.replace`: Variable substitution command
 - `debugConfigs.exportTree`: Export tree as JSON
 - `debugConfigs.importTree`: Import tree from JSON
+- `debugConfigs.generateCommands`: Generate input commands JSON from tree structure
 
 ## Installation
 

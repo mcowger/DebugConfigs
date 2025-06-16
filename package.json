@@ -62,6 +62,11 @@
         "command": "debugConfigs.importTree",
         "title": "Import Tree from JSON",
         "icon": "$(folder-opened)"
+      },
+      {
+        "command": "debugConfigs.generateCommands",
+        "title": "Generate Stanzas for Variable Substitution",
+        "icon": "$(json)"
       }
     ],
     "menus": {
@@ -88,6 +93,11 @@
         },
         {
           "command": "debugConfigs.importTree",
+          "when": "view == debugConfigs",
+          "group": "navigation"
+        },
+        {
+          "command": "debugConfigs.generateCommands",
           "when": "view == debugConfigs",
           "group": "navigation"
         }
