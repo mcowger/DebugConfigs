@@ -3,6 +3,16 @@
   "displayName": "DebugConfigs",
   "description": "Complex Debug Configs Made Easy",
   "version": "0.0.1",
+  "publisher": "mcowger",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mcowger/DebugConfigs.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mcowger/DebugConfigs/issues"
+  },
+  "homepage": "https://github.com/mcowger/DebugConfigs#readme",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.101.0"
   },
@@ -137,7 +147,9 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "package": "vsce package",
+    "publish": "vsce publish"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
