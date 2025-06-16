@@ -2,8 +2,11 @@ import * as vscode from 'vscode';
 import { DebugConfigTreeDataProvider } from './DebugConfigTree';
 
 export function activate(context: vscode.ExtensionContext) {
-	// Create and register the tree data provider
-	const treeDataProvider = new DebugConfigTreeDataProvider();
+	// Create and register the tree data provider with workspace state
+	const treeDataProvider = new DebugConfigTreeDataProvider([], context.workspaceState);
+
+	// Load any previously saved tree state
+	treeDataProvider.loadTreeState();
 
 	// Register the tree data provider with VS Code
 	const treeView = vscode.window.createTreeView('debugConfigs', {
